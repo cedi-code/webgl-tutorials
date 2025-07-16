@@ -1,0 +1,70 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<title>webgl tutorials</title>
+<style>
+
+	#my_canvas {
+	width: 100vw;
+	height: 100vh;
+	display: block;
+	position: fixed;
+	left: 0;
+	top: 0;
+	z-index: -1;
+	}
+
+	body {
+		margin: 0;
+		font-size: 20pt;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+
+    .scroll-box {
+      width: 35%;
+      max-height: 300px;
+      overflow-y: auto;
+      background: #303030be;
+      padding: 1rem;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      border-radius: 8px;
+      position: absolute;
+      top: 60%;
+      transform: translateY(-50%);
+	  text-align: center;
+	  
+    }
+	a {
+		color: yellow;
+	}
+
+</style>
+</head>
+<body>
+
+	<div class="scroll-box">
+		<a href="fundamentals/">fundamentals</a> <br>
+		<a href="transformations2d/">transform 2d</a> <br>
+		<a href="transformations3d/">transform 3d</a> <br>
+		<a href="lighting/">lighting</a> <br>
+		<a href="structure-organization/">structure organization</a> <br>
+		<a href="loading-obj/">loading obj</a> <br>
+		<a href="mouse-track/">mouse track</a> <br>
+		<a href="texture/">texture</a> <br>
+		<a href="picking-stuff/">picking stuff</a> <br>
+		<a href="cell-shading/">cell shading</a> <br>
+  	</div>
+<canvas width="540" height="360" id="my_canvas"></canvas>
+
+
+
+<script  type="module" src="launchpage/my_script.js"></script>
+
+</body>
+
+</html>
