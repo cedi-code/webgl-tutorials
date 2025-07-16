@@ -2,10 +2,16 @@
 me learning webgl
 ![screenshot](./screenshot.png)
 ## Setup
-start a local server in the parent directory with:
+start a local server in the parent directory with 
 ```bash
 python3 -m http.server 8000
 ```
+if you are on windows, and it did not work try:
+```
+npm install -g http-server 
+http-server -p 8000
+```
+
 to compile **one** of the multiple pages enter the directory
 ```bash
 cd ./launchpage/.
