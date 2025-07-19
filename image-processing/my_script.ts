@@ -1,7 +1,10 @@
 import { AttributeArrayData, AttributeArrayDataWithIndices, AttributeSetter, BufferInfo, myWebglUtils, UniformData, UniformSetter } from "../utils/myWebglUtils.js";
-import { myMath } from "../utils/myMathUtils.js";
-import { primitives } from "../utils/myPrimitives.js";
+
+
+const sliderY = document.getElementById('y-slider') as HTMLInputElement;
+const sliderX = document.getElementById('x-slider') as HTMLInputElement;
 const canvas = document.getElementById('my_canvas') as HTMLCanvasElement;
+const blurOffset : [number,number] = [1,1];
 const gl = canvas?.getContext('webgl') as WebGLRenderingContext;
 if (!gl) {
     throw new Error('WebGL not supported');
@@ -22,7 +25,7 @@ const planeData : AttributeArrayDataWithIndices = {
                             1,-1,0  // bottom right
                          ], 
                     numComponents : 3},
-    a_texCoord : { dataArray : [0,0,  0,1,  1,1,  1,0], numComponents : 2},
+    a_texCoord : { dataArray : [0,1,  0,0,  1,1,  1,0], numComponents : 2},
     indices : [ 0,1,2, 2,3,1 ],
 }
 const bufferInfo = myWebglUtils.createBufferInfoFromArrays(gl, planeData) as BufferInfo;
@@ -56,7 +59,25 @@ if((image.width & (image.width - 1)) == 0 && (image.height & (image.height - 1))
 
 const cubeUniforms : UniformData = {
     u_texture: texture,
+    u_textureSize : [image.width, image.height],
+    u_offset : [blurOffset[0], blurOffset[1]],
 };
+
+sliderX.oninput = (event) => {
+    const target = event.target as HTMLInputElement;
+    const value : number = parseInt(target.value);
+    blurOffset[0] = value;
+    cubeUniforms.u_offset = blurOffset;
+    drawScene();
+}
+
+sliderY.oninput = (event) => {
+    const target = event.target as HTMLInputElement;
+    const value : number = parseInt(target.value);
+    blurOffset[1] = value;
+    cubeUniforms.u_offset = blurOffset;
+    drawScene();
+}
 
 function drawScene() {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
