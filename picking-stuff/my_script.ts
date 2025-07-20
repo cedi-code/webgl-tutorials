@@ -187,7 +187,7 @@ function drawCube(aspect : number, time : number)
 requestAnimationFrame(drawScene);
 
 
-function bindFramebufferAndSetViewport(fb, width, height) {
+function bindFramebufferAndSetViewport(fb : WebGLFramebuffer, width : number, height : number) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
     gl.viewport(0, 0, width, height);
 }
