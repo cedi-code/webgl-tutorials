@@ -4,6 +4,7 @@ import { primitives } from "../utils/myPrimitives.js";
 
 const sliderSize = document.getElementById('size-slider') as HTMLInputElement;
 const sliderBlur = document.getElementById('blur-slider') as HTMLInputElement;
+const btnReset = document.getElementById('reset-btn') as HTMLButtonElement;
 const canvas = document.getElementById('my_canvas') as HTMLCanvasElement;
 const gl = canvas?.getContext('webgl') as WebGLRenderingContext;
 if (!gl) {
@@ -180,7 +181,7 @@ const planeUniforms : UniformData = {
     u_texture: targetTexture,
     u_color: [1,0.5,0,1],
     u_textureSize: [targetTextureWidth, targetTextureHeight],
-    u_blurSize: [1.0, 1.0],
+    u_blurSize: [2, 2],
 };
 
 sliderSize.oninput = (event) => {
@@ -198,6 +199,23 @@ sliderBlur.oninput = (event) => {
     planeUniforms.u_blurSize = [value, value];
     
     drawScene();
+}
+
+btnReset.onclick = (event) => {
+    console.log("reset canvas");
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.clearColor(1,1,1,1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb2);
+    gl.clearColor(1,1,1,1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.clearColor(1,1,1,1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
 }
 
 function drawScene() {

@@ -4,6 +4,7 @@ uniform sampler2D u_texture;
 uniform vec2 u_textureSize;
 uniform vec2 u_blurSize;
 
+varying vec3 v_pos;
 varying vec2 v_texCoord;
 
 void main() {
