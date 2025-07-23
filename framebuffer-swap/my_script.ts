@@ -260,6 +260,8 @@ function drawScene() {
     
 
     isTextureB = !isTextureB; // flip    
+
+    requestAnimationFrame(drawScene);
 }
 
 
@@ -287,7 +289,7 @@ function handleMouseMove(event : MouseEvent)
 
     circleUniforms.u_world =  myMath.multiply(myMath.translation(xRelativ,yRelativ,0.0),worldM);
 
-    drawScene();
+    // drawScene();
 
 
 }

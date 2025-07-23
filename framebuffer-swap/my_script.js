@@ -193,6 +193,7 @@ function drawScene() {
     planeUniforms.u_texture = (currentDestFB === fb) ? textureA : textureB; // displays the thing we just renderd too
     drawCube(programPost, attributeSetterPost, uniformSetterPost, bufferInfoPlane, planeUniforms);
     isTextureB = !isTextureB; // flip    
+    requestAnimationFrame(drawScene);
 }
 function drawCube(program, attribSetter, uniSetter, buffer, uniforms) {
     gl.useProgram(program);
@@ -209,7 +210,7 @@ function handleMouseMove(event) {
     xRelativ = event.clientX;
     yRelativ = event.clientY;
     circleUniforms.u_world = myMath.multiply(myMath.translation(xRelativ, yRelativ, 0.0), worldM);
-    drawScene();
+    // drawScene();
 }
 function bindFramebufferAndSetViewport(fb, width, height) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
