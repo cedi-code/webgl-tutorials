@@ -2,9 +2,10 @@ import { AttributeArrayData, AttributeArrayDataWithIndices, AttributeSetter, Buf
 import { Matrix4x4Flat, myMath, Vector3, Vector4 } from "../utils/myMathUtils.js";
 import { primitives } from "../utils/myPrimitives.js";
 
-const sliderSize = document.getElementById('size-slider') as HTMLInputElement;
-const sliderBlur = document.getElementById('blur-slider') as HTMLInputElement;
+const sliderSpeed = document.getElementById('speed-slider') as HTMLInputElement;
 const btnReset = document.getElementById('reset-btn') as HTMLButtonElement;
+const btnPause = document.getElementById('pause-btn') as HTMLButtonElement;
+const btnStart = document.getElementById('start-btn') as HTMLButtonElement;
 const canvas = document.getElementById('my_canvas') as HTMLCanvasElement;
 const gl = canvas?.getContext('webgl') as WebGLRenderingContext;
 if (!gl) {
@@ -24,9 +25,30 @@ if (!programPost) {
 const uniformSetterPost = myWebglUtils.createUniformSetters(gl, programPost) as UniformSetter;
 const attributeSetterPost = myWebglUtils.createAttributeSetters(gl, programPost) as AttributeSetter;
 
+const programPostAction = await myWebglUtils.createProgramFromScripts(gl, 'shaders/vertex.glsl', 'shaders/fragmentPostAction.glsl');
+if (!programPostAction) {
+    throw new Error('shader program failed');
+}
+const uniformSetterPostAction = myWebglUtils.createUniformSetters(gl, programPostAction) as UniformSetter;
+const attributeSetterPostAction = myWebglUtils.createAttributeSetters(gl, programPostAction) as AttributeSetter;
+
+const ratio : number = gl.canvas.width / gl.canvas.height; 
+
+
+const pixelSize = 20;
+const pixelAmount = gl.canvas.width / pixelSize;
 
 // ==== set up data
-const cubeData = primitives.createOctagon(20) as AttributeArrayData;
+const squareData : AttributeArrayDataWithIndices = {
+    a_position : { dataArray : [
+                            0, -pixelSize, 0,           // bottom left
+                            -pixelSize, -pixelSize, 0,   // bottom right
+                            0, 0, 0,                    // top left
+                            -pixelSize, 0, 0,             // top right
+                        ],
+                    numComponents: 3},
+    indices : [ 0,1,2, 2,1,3 ],
+}
 const planeData : AttributeArrayDataWithIndices = {
     a_position : { dataArray : [
                             -1,-1,0, // bottom left
@@ -39,7 +61,7 @@ const planeData : AttributeArrayDataWithIndices = {
     indices : [ 0,1,2, 2,1,3 ],
 }
 
-const bufferInfoCube = myWebglUtils.createBufferInfoFromArrays(gl, cubeData) as BufferInfo;
+const bufferInfoSquare = myWebglUtils.createBufferInfoFromArrays(gl, squareData) as BufferInfo;
 const bufferInfoPlane = myWebglUtils.createBufferInfoFromArrays(gl,planeData) as BufferInfo; // this binds indicies!
 const left = 0;
 const right = gl.canvas.width;
@@ -50,36 +72,6 @@ const far = -100;
 
 let projectionMatrix = myMath.ortographic(left, right, bottom, top, near, far);
 let viewMatrix = myMath.identity(4);
-
-
-// == Create a texture ==
-const texture = gl.createTexture() as WebGLTexture;
-gl.bindTexture(gl.TEXTURE_2D, texture);
-    
-
-// fill texture with 3x2 pixels
-const level : number = 0;
-const internalFormat = gl.LUMINANCE;
-const width : number = 3;
-const height : number = 2;
-const border : number = 0;
-const format = gl.LUMINANCE;
-const type = gl.UNSIGNED_BYTE;
-const data = new Uint8Array([
-    128,  64, 128,
-      0, 192,   0,
-]);
-
-const alignment : number = 1;
-gl.pixelStorei(gl.UNPACK_ALIGNMENT, alignment);
-
-gl.texImage2D(gl.TEXTURE_2D, level,internalFormat,width,height,border,format,type,data);
-
-// set becaue we dont hav emips and its not filterd?
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
 
 // == Create a texture to render to==
@@ -159,19 +151,17 @@ gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuffer2);
 gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, targetTextureWidth, targetTextureHeight);
 gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthBuffer2);
 
-
-
-// // == ==
+// ====
 
 let targetTexture : WebGLTexture = textureA;
 let isTextureB : boolean = false;
-let worldM : Matrix4x4Flat = myMath.identity(4);
+let worldM : Matrix4x4Flat = myMath.translation(0,0,0); //myMath.identity(4);
 
-const circleUniforms : UniformData = {
+const squareUniforms : UniformData = {
     u_projection: projectionMatrix,
     u_view: viewMatrix,
-    u_world: myMath.identity(4),
-    u_color: [1, 0.5, 0, 1],
+    u_world: worldM,
+    u_color: [1, 1, 1, 1],
 };
 
 const planeUniforms : UniformData = {
@@ -179,44 +169,59 @@ const planeUniforms : UniformData = {
     u_view: myMath.identity(4),
     u_world: myMath.identity(4),
     u_texture: targetTexture,
-    u_color: [1,0.5,0,1],
+    u_color: [1,1,1,1],
     u_textureSize: [targetTextureWidth, targetTextureHeight],
-    u_blurSize: [2, 2],
+    u_pixelSize: [pixelSize/2.0, pixelSize/2.0],
 };
 
-sliderSize.oninput = (event) => {
+sliderSpeed.oninput = (event) => {
     const target = event.target as HTMLInputElement;
-    const value : number = parseFloat(target.value);
-    const scale : number = 1.0 + (value / 10.0);
-    worldM = myMath.scaling(scale,scale,scale);
-}
+    const value : number = parseInt(target.value);
 
-sliderBlur.oninput = (event) => {
-    const target = event.target as HTMLInputElement;
-    const value : number = parseFloat(target.value);
-
-    planeUniforms.u_blurSize = [value, value];
-
+    simSpeed = value;
+    simSpeedT = simSpeed * 100;
 }
 
 btnReset.onclick = (event) => {
-    console.log("reset canvas");
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-    gl.clearColor(1,1,1,1);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb2);
-    gl.clearColor(1,1,1,1);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.clearColor(1,1,1,1);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
+    resetCanvasAndTexture();
+    runningSim = false;
+    doSimStep = false;
 }
+btnStart.onclick = (event) => {
+    runningSim = true;
+    doSimStep = true;
+}
+btnPause.onclick = (event) => {
+    runningSim = false;
+    doSimStep = false;
+}
+resetCanvasAndTexture();
 
-function drawScene() {
+let startT = 0;
+let simSpeed = 10;
+let simSpeedT = simSpeed * 100;
+let runningSim : boolean = true;
+let doSimStep : boolean = false;
+
+function drawScene(time : number) {
+
+    if (!startT) startT = time;
+
+    // Setting the difference between timestamp 
+    // and the set start point as our progress
+    let progress = time - startT;
+
+
+    if(progress > simSpeedT && runningSim) {
+        
+        startT = time; // really bad code design, but guarantees two loops atleast for sim?
+        
+        // swap shader program
+        doSimStep = true;
+    }
+    else {
+        doSimStep = false;
+    }
 
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
@@ -230,19 +235,23 @@ function drawScene() {
         // render to our targetTexture by binding frame buffer
         gl.bindFramebuffer(gl.FRAMEBUFFER, currentDestFB);
 
+
         // tell webgl how to convert from clip space to pixels
         gl.viewport(0,0,targetTextureWidth,targetTextureHeight);
 
         // clear the attachments
-        //gl.clearColor(1,1,1,1);
+
         gl.clear(gl.DEPTH_BUFFER_BIT);
-        drawCube(programPre,attributeSetterPre,uniformSetterPre,bufferInfoCube,circleUniforms);
+        drawCube(programPre,attributeSetterPre,uniformSetterPre,bufferInfoSquare,squareUniforms); // <- draw square on texture
         // add the blurr to the texture too!
         planeUniforms.u_texture = currentSourceTexture;
-        drawCube(programPost, attributeSetterPost, uniformSetterPost, bufferInfoPlane, planeUniforms);
+        if(doSimStep) {
+            drawCube(programPostAction, attributeSetterPostAction, uniformSetterPostAction, bufferInfoPlane, planeUniforms); // <- draws texture
+        } else {
+            drawCube(programPost, attributeSetterPost, uniformSetterPost, bufferInfoPlane, planeUniforms); // <- draws texture
+        }
+        
 
-    
-    
         // render to canvas
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
@@ -251,14 +260,17 @@ function drawScene() {
 
         planeUniforms.u_texture = targetTexture;
         // clear canvas and reset buffers
-        //gl.clearColor(1,1,1,1);
-        //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        // gl.clearColor(1,0,0,1);
+        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         planeUniforms.u_texture = (currentDestFB === fb) ? textureA : textureB; // displays the thing we just renderd too
-        drawCube(programPost, attributeSetterPost, uniformSetterPost, bufferInfoPlane, planeUniforms);
+        
+        drawCube(programPost, attributeSetterPost, uniformSetterPost, bufferInfoPlane, planeUniforms); // <- draws texture
+        
     
 
-    isTextureB = !isTextureB; // flip    
-
+    isTextureB = !isTextureB; // flip 
+    squareUniforms.u_world = myMath.identity(4);
+    
     requestAnimationFrame(drawScene);
 }
 
@@ -273,23 +285,48 @@ function drawCube(program : WebGLProgram | null, attribSetter : AttributeSetter,
     myWebglUtils.drawBufferInfo(gl, buffer);
 }
 
-drawScene();
+drawScene(0.0);
 
 
-document.onmousemove = handleMouseMove;
+document.onmousedown = handleMouseClick;
 let xRelativ = 0;
 let yRelativ = 0;
 
-function handleMouseMove(event : MouseEvent) 
+function handleMouseClick(event : MouseEvent)
 {
     xRelativ = event.clientX;
     yRelativ = event.clientY;
 
-    circleUniforms.u_world =  myMath.multiply(myMath.translation(xRelativ,yRelativ,0.0),worldM);
+    if(xRelativ > gl.canvas.width || yRelativ > gl.canvas.height) {
+        return;
+    }
 
-    // drawScene();
+    xRelativ /= gl.canvas.width;
+    yRelativ /= gl.canvas.height;
 
+    let xPixel = Math.round(xRelativ * pixelAmount);
+    let yPixel = Math.round(yRelativ * pixelAmount);
 
+    squareUniforms.u_world =  myMath.multiply(myMath.translation(xPixel*pixelSize,yPixel*pixelSize,0.0),worldM);
+
+}
+
+function resetCanvasAndTexture() {
+
+    squareUniforms.u_world = myMath.identity(4);
+    console.log("reset canvas");
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.clearColor(0,0,0,1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb2);
+    gl.clearColor(0,0,0,1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.clearColor(0,0,0,1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 }
 
 
